@@ -34,6 +34,8 @@ from ldm.models.diffusion.ddpm import LatentDepth2ImageDiffusion
 from einops import repeat, rearrange
 from blendmodes.blend import blendLayers, BlendType
 
+from extensions.prompt_filter import ContentFilter
+
 
 # some of those options should not be changed at all because they would break the model, so I removed them from options.
 opt_C = 4
@@ -436,6 +438,14 @@ class StableDiffusionProcessing:
 
         self.main_prompt = self.all_prompts[0]
         self.main_negative_prompt = self.all_negative_prompts[0]
+
+        content_filter = ContentFilter()
+        check_prompt = content_filter.check_prompt(self.main_prompt)
+        is_inappropriate = check_prompt["is_inappropriate"]
+        layer = check_prompt["layer"]
+        reason = check_prompt["reason"]
+        if is_inappropriate == True:
+            raise RuntimeError("Prompt blocked due to inappropriate content.")
 
     def cached_params(self, required_prompts, steps, extra_network_data, hires_steps=None, use_old_scheduling=False):
         """Returns parameters that invalidate the cond cache if changed"""

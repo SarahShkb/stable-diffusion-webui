@@ -30,7 +30,6 @@ notification.mp3
 /SwinIR
 /textual_inversion
 .vscode
-/extensions
 /test/stdout.txt
 /test/stderr.txt
 /cache.json*
@@ -42,3 +41,4 @@ notification.mp3
 /cache
 trace.json
 /sysinfo-????-??-??-??-??.json
+.venv_3_11
