@@ -46,3 +46,31 @@
 #export NO_TCMALLOC="True"
 
 ###########################################
+
+#!/bin/bash
+
+# Activate venv and install custom packages before launch
+install_dir="."
+venv_dir="venv"
+
+# Function to install extension dependencies
+install_extension_deps() {
+    if [[ -f "${venv_dir}/bin/activate" ]]; then
+        source "${venv_dir}/bin/activate"
+        
+        # Install your extension's requirements
+        if [[ -f "extensions/prompt_filter/requirements.txt" ]]; then
+            echo "Installing filter extension dependencies..."
+            pip install -r extensions/prompt_filter/requirements.txt
+        fi
+        
+        # Or install specific packages directly
+        pip install extensions
+    fi
+}
+
+# Run the installation
+install_extension_deps
+
+# Add any other custom parameters here
+export COMMANDLINE_ARGS="--xformers --medvram"

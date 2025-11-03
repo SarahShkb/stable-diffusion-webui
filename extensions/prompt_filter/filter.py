@@ -3,7 +3,6 @@ import os
 from typing import Dict
 import time
 from openai import OpenAI
-import ollama
 from better_profanity import profanity
 from dotenv import load_dotenv
 
@@ -61,6 +60,7 @@ class ContentFilter:
                 Respond with ONLY one word: SAFE or UNSAFE
                 Answer:"""
         
+  
         try:
             start_time = time.time()
             data = {
@@ -72,48 +72,57 @@ class ContentFilter:
                     "top_p": 0.9
                 }
             }
-            
-            client = ollama.Client(host=self.OLLAMA_HOST)
-            response = client.generate(
-                model=self.OLLAMA_MODEL,
-                prompt=prompt
+
+            # Make a direct HTTP POST request to the Ollama server
+            response = requests.post(
+                f"{self.OLLAMA_HOST}/api/generate",
+                json=data,
+                timeout=60
             )
-        
-            if response.done == True:
-                result = response.response
-                processing_time = time.time() - start_time
-                
-                # Check for SAFE in response
-                if "SAFE" in result and "UNSAFE" not in result:
-                    return {
-                        "safe": True,
-                        "blocked": False,
-                        "reason": "Approved by AI",
-                        "layer": "llama",
-                        "confidence": 90,
-                        "processing_time": f"{processing_time:.2f}s"
-                    }
-                else:
-                    # Block if UNSAFE or uncertain
-                    return {
-                        "safe": False,
-                        "blocked": True,
-                        "reason": "Flagged by AI as potentially inappropriate",
-                        "layer": "llama",
-                        "confidence": 85,
-                        "processing_time": f"{processing_time:.2f}s"
-                    }
-            else:
-                # If Llama fails, be cautious and block
+
+            if response.status_code != 200:
                 return {
                     "safe": False,
                     "blocked": True,
-                    "reason": "Safety check failed, blocked as precaution",
-                    "layer": "3-llama-not-sure",
-                    "confidence": 50
+                    "reason": f"Ollama API error: {response.status_code} - {response.text}",
+                    "layer": "llama",
+                    "confidence": 0,
+                    "processing_time": "0s"
                 }
-                
+
+            result_data = response.json()
+            result = result_data.get("response", "").strip()
+            processing_time = time.time() - start_time
+
+            # Check for SAFE / UNSAFE in response
+            if "SAFE" in result and "UNSAFE" not in result:
+                return {
+                    "safe": True,
+                    "blocked": False,
+                    "reason": "Approved by AI",
+                    "layer": "llama",
+                    "confidence": 90,
+                    "processing_time": f"{processing_time:.2f}s"
+                }
+            else:
+                return {
+                    "safe": False,
+                    "blocked": True,
+                    "reason": "Flagged by AI as potentially inappropriate",
+                    "layer": "llama",
+                    "confidence": 85,
+                    "processing_time": f"{processing_time:.2f}s"
+                }
+
         except Exception as e:
+            return {
+                "safe": False,
+                "blocked": True,
+                "reason": f"Error calling Ollama API: {str(e)}",
+                "layer": "llama",
+                "confidence": 0,
+                "processing_time": "0s"
+            }
             print(f"Llama error: {e}")
             # On error, block to be safe
             return {
